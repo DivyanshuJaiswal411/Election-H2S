@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenAI } from '@google/genai';
+import { VertexAI } from '@google-cloud/vertexai';
 
-// The Google Gen AI client will be initialized inside the request handler
+const PROJECT_ID = process.env.GOOGLE_CLOUD_PROJECT || 'election-h2s-495213';
+const LOCATION = 'us-central1';
+const MODEL = 'gemini-2.5-flash-preview-04-17';
 
 const SYSTEM_PROMPT = `
 You are the "AI Election Assistant," an expert, friendly, and neutral guide designed to help users understand election processes, timelines, voting rights, and civic duties.
@@ -18,40 +20,47 @@ Answer the user's latest query based on the conversation history.
 
 export async function POST(req: Request) {
   try {
-    const ai = new GoogleGenAI({});
+    const vertexAI = new VertexAI({ project: PROJECT_ID, location: LOCATION });
+    const generativeModel = vertexAI.getGenerativeModel({
+      model: MODEL,
+      systemInstruction: {
+        role: 'system',
+        parts: [{ text: SYSTEM_PROMPT }],
+      },
+      generationConfig: {
+        temperature: 0.3,
+        maxOutputTokens: 1024,
+      },
+    });
+
     const { messages } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: 'Invalid messages format' }, { status: 400 });
     }
 
-    // Prepare history for Gemini
-    const chatHistory = messages.map((msg: any) => ({
+    // Map chat history — Vertex AI uses 'user' and 'model' roles
+    const chatHistory = messages.slice(0, -1).map((msg: { role: string; content: string }) => ({
       role: msg.role === 'user' ? 'user' : 'model',
-      parts: [{ text: msg.content }]
+      parts: [{ text: msg.content }],
     }));
 
-    // Start a chat session with the system prompt
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: [
-            { role: 'user', parts: [{ text: SYSTEM_PROMPT }] },
-            { role: 'model', parts: [{ text: 'Understood. I will act as the neutral, helpful AI Election Assistant.' }] },
-            ...chatHistory
-        ],
-        config: {
-            temperature: 0.3,
-            maxOutputTokens: 1024,
-        }
-    });
+    const latestMessage = messages[messages.length - 1];
+    if (!latestMessage) {
+      return NextResponse.json({ error: 'No message provided' }, { status: 400 });
+    }
 
-    const aiMessage = response.text;
+    const chat = generativeModel.startChat({ history: chatHistory });
+    const result = await chat.sendMessage(latestMessage.content);
+    const response = await result.response;
+    const aiMessage = response.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
 
     return NextResponse.json({ message: aiMessage });
-  } catch (error: any) {
-    console.error('Error generating AI response:', error);
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error generating AI response:', errMsg);
     return NextResponse.json(
-      { error: 'Failed to process your request.', details: error.message },
+      { error: 'Failed to process your request.', details: errMsg },
       { status: 500 }
     );
   }
