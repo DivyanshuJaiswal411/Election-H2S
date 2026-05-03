@@ -14,11 +14,6 @@
 
 ---
 
-![Banner](https://election-assistant-155104010367.us-central1.run.app)
-
-</div>
-
----
 
 ## 📋 Table of Contents
 
