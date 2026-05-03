@@ -115,6 +115,19 @@ export default function Home() {
         </div>
 
         <div className={styles.inputArea}>
+          {messages.length === 1 && (
+            <div className="flex gap-2 mb-4 flex-wrap">
+              {['How do I register to vote?', 'What are the deadlines for the next election?', 'Explain the electoral college.'].map((prompt) => (
+                <button
+                  key={prompt}
+                  onClick={() => setInput(prompt)}
+                  className="bg-white/5 border border-white/10 hover:bg-indigo-500/20 hover:border-indigo-500/40 text-slate-200 px-4 py-2 rounded-full text-sm transition-all"
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
+          )}
           <form onSubmit={handleSubmit} className={styles.form}>
             <input
               type="text"
