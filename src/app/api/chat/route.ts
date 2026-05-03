@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 
-// Initialize the Google Gen AI client
-// It automatically uses the GEMINI_API_KEY environment variable
-const ai = new GoogleGenAI({});
+// The Google Gen AI client will be initialized inside the request handler
 
 const SYSTEM_PROMPT = `
 You are the "AI Election Assistant," an expert, friendly, and neutral guide designed to help users understand election processes, timelines, voting rights, and civic duties.
@@ -20,6 +18,7 @@ Answer the user's latest query based on the conversation history.
 
 export async function POST(req: Request) {
   try {
+    const ai = new GoogleGenAI({});
     const { messages } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
